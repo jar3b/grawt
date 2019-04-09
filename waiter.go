@@ -9,6 +9,7 @@ import (
 )
 
 type Waiter struct {
+	blockingMode  bool
 	waitGroup     sync.WaitGroup
 	closeHandlers []*CloseHandler
 }
@@ -53,11 +54,21 @@ func (w *Waiter) Halt(err error) {
 	} else {
 		log.Info("Program was terminated gracefully.")
 	}
+	if !w.blockingMode {
+		if err != nil {
+			os.Exit(1)
+		} else {
+			os.Exit(0)
+		}
+	}
 }
 
-func (w *Waiter) Wait() {
-	log.Info("Waiting...")
-	w.waitGroup.Wait()
+func (w *Waiter) Wait(blockingMode bool) {
+	w.blockingMode = blockingMode
+	if blockingMode {
+		log.Info("Waiting...")
+		w.waitGroup.Wait()
+	}
 }
 
 func (w *Waiter) onSignal(sig os.Signal) {
@@ -67,6 +78,7 @@ func (w *Waiter) onSignal(sig os.Signal) {
 
 func NewWaiter() *Waiter {
 	w := Waiter{
+		true,
 		sync.WaitGroup{},
 		make([]*CloseHandler, 0),
 	}

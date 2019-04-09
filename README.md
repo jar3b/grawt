@@ -10,5 +10,5 @@ waiter.AddCloseHandler(func() {
 		nacl.FinalizeStan()
 	}, false)
 
-waiter.Wait()
+waiter.Wait(true)
 ```
