@@ -10,5 +10,6 @@ waiter.AddCloseHandler(func() {
 		nacl.FinalizeStan()
 	}, false)
 
-waiter.Wait(true)
+// blocking wait, if no need to block (with http server, for example), you can omit .Wait() call
+waiter.Wait()
 ```

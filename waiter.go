@@ -63,12 +63,10 @@ func (w *Waiter) Halt(err error) {
 	}
 }
 
-func (w *Waiter) Wait(blockingMode bool) {
-	w.blockingMode = blockingMode
-	if blockingMode {
-		log.Info("Waiting...")
-		w.waitGroup.Wait()
-	}
+func (w *Waiter) Wait() {
+	w.blockingMode = true
+	log.Info("Waiting...")
+	w.waitGroup.Wait()
 }
 
 func (w *Waiter) onSignal(sig os.Signal) {
@@ -78,7 +76,7 @@ func (w *Waiter) onSignal(sig os.Signal) {
 
 func NewWaiter() *Waiter {
 	w := Waiter{
-		true,
+		false,
 		sync.WaitGroup{},
 		make([]*CloseHandler, 0),
 	}
