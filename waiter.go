@@ -32,7 +32,7 @@ func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
 	if h.handlerFunc != nil && *h.handlerFunc != nil {
 		(*h.handlerFunc)()
 	}
-	h.Quit <- struct{}{}
+	close(h.Quit)
 	if h.autoDone || forceWaitGroupDone {
 		w.waitGroup.Done()
 	}
