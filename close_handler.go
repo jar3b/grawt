@@ -2,7 +2,7 @@ package grawt
 
 type CloseHandler struct {
 	waiter      *Waiter
-	Quit        chan bool
+	Quit        chan struct{}
 	active      bool
 	autoDone    bool
 	handlerFunc *func()

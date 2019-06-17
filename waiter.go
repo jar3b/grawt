@@ -17,7 +17,7 @@ type Waiter struct {
 func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
 	ch := CloseHandler{
 		w,
-		make(chan bool, 1),
+		make(chan struct{}, 1),
 		true,
 		autoDone,
 		f,
@@ -32,7 +32,7 @@ func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
 	if h.handlerFunc != nil && *h.handlerFunc != nil {
 		(*h.handlerFunc)()
 	}
-	h.Quit <- true
+	h.Quit <- struct{}{}
 	if h.autoDone || forceWaitGroupDone {
 		w.waitGroup.Done()
 	}
