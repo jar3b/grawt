@@ -32,7 +32,9 @@ func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
 	if h.handlerFunc != nil && *h.handlerFunc != nil {
 		(*h.handlerFunc)()
 	}
-	close(h.Quit)
+	if h.active {
+		close(h.Quit)
+	}
 	if h.autoDone || forceWaitGroupDone {
 		w.waitGroup.Done()
 	}
