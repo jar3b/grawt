@@ -1,6 +1,9 @@
 package grawt
 
+import "sync"
+
 type CloseHandler struct {
+	sync.Mutex
 	waiter      *Waiter
 	Quit        chan struct{}
 	active      bool

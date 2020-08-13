@@ -16,11 +16,11 @@ type Waiter struct {
 
 func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
 	ch := CloseHandler{
-		w,
-		make(chan struct{}, 1),
-		true,
-		autoDone,
-		f,
+		waiter:      w,
+		Quit:        make(chan struct{}, 1),
+		active:      true,
+		autoDone:    autoDone,
+		handlerFunc: f,
 	}
 	w.waitGroup.Add(1)
 	w.closeHandlers = append(w.closeHandlers, &ch)
@@ -32,6 +32,7 @@ func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
 	if h.handlerFunc != nil && *h.handlerFunc != nil {
 		(*h.handlerFunc)()
 	}
+	h.Lock()
 	if h.active {
 		close(h.Quit)
 	}
@@ -39,6 +40,7 @@ func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
 		w.waitGroup.Done()
 	}
 	h.active = false
+	h.Unlock()
 }
 
 func (w *Waiter) AddCloseHandler(f func(), waitForChannel bool) *CloseHandler {
