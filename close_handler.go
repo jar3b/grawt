@@ -1,9 +1,6 @@
 package grawt
 
-import "sync"
-
 type CloseHandler struct {
-	sync.Mutex
 	waiter      *Waiter
 	Quit        chan struct{}
 	active      bool
@@ -13,8 +10,4 @@ type CloseHandler struct {
 
 func (ch *CloseHandler) Halt(err error) {
 	ch.waiter.Halt(err)
-}
-
-func (ch *CloseHandler) Done() {
-	ch.waiter.terminateHandler(ch, true)
 }

@@ -1,3 +1,5 @@
 module github.com/jar3b/grawt
 
-require github.com/sirupsen/logrus v1.4.1
+go 1.15
+
+require github.com/sirupsen/logrus v1.7.0

@@ -9,9 +9,11 @@ import (
 )
 
 type Waiter struct {
+	sync.RWMutex
 	blockingMode  bool
 	waitGroup     sync.WaitGroup
 	closeHandlers []*CloseHandler
+	isHalting     bool
 }
 
 func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
@@ -22,25 +24,31 @@ func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
 		autoDone:    autoDone,
 		handlerFunc: f,
 	}
+
+	w.Lock()
 	w.waitGroup.Add(1)
 	w.closeHandlers = append(w.closeHandlers, &ch)
+	w.Unlock()
 
 	return &ch
 }
 
 func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
+	if !h.active {
+		return
+	}
 	if h.handlerFunc != nil && *h.handlerFunc != nil {
 		(*h.handlerFunc)()
 	}
-	h.Lock()
+
 	if h.active {
 		close(h.Quit)
 	}
 	if h.autoDone || forceWaitGroupDone {
 		w.waitGroup.Done()
 	}
+
 	h.active = false
-	h.Unlock()
 }
 
 func (w *Waiter) AddCloseHandler(f func(), waitForChannel bool) *CloseHandler {
@@ -48,11 +56,17 @@ func (w *Waiter) AddCloseHandler(f func(), waitForChannel bool) *CloseHandler {
 }
 
 func (w *Waiter) Halt(err error) {
-	for _, h := range w.closeHandlers {
-		if h.active {
-			w.terminateHandler(h, false)
-		}
+	if w.isHalting {
+		return
 	}
+	w.isHalting = true
+
+	w.RLock()
+	for _, h := range w.closeHandlers {
+		w.terminateHandler(h, false)
+	}
+	w.RUnlock()
+
 	if err != nil {
 		log.Errorf("Program was terminated with error: %v", err)
 	} else {
@@ -65,6 +79,8 @@ func (w *Waiter) Halt(err error) {
 			os.Exit(0)
 		}
 	}
+
+	w.isHalting = false
 }
 
 func (w *Waiter) Wait() {
@@ -80,9 +96,11 @@ func (w *Waiter) onSignal(sig os.Signal) {
 
 func NewWaiter() *Waiter {
 	w := Waiter{
+		sync.RWMutex{},
 		false,
 		sync.WaitGroup{},
 		make([]*CloseHandler, 0),
+		false,
 	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
