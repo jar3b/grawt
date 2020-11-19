@@ -22,7 +22,9 @@ func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
 		Quit:        make(chan struct{}, 1),
 		active:      true,
 		autoDone:    autoDone,
+		wgDone:      false,
 		handlerFunc: f,
+		mu:          &sync.Mutex{},
 	}
 
 	w.Lock()
@@ -34,18 +36,23 @@ func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
 }
 
 func (w *Waiter) terminateHandler(h *CloseHandler, forceWaitGroupDone bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if !h.active {
+		if !h.wgDone {
+			w.waitGroup.Done()
+		}
 		return
 	}
+
 	if h.handlerFunc != nil && *h.handlerFunc != nil {
 		(*h.handlerFunc)()
 	}
 
-	if h.active {
-		close(h.Quit)
-	}
+	close(h.Quit)
 	if h.autoDone || forceWaitGroupDone {
 		w.waitGroup.Done()
+		h.wgDone = true
 	}
 
 	h.active = false
@@ -87,6 +94,7 @@ func (w *Waiter) Wait() {
 	w.blockingMode = true
 	log.Info("Waiting...")
 	w.waitGroup.Wait()
+	log.Info("Terminated")
 }
 
 func (w *Waiter) onSignal(sig os.Signal) {
