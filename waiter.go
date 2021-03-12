@@ -13,7 +13,20 @@ type Waiter struct {
 	blockingMode  bool
 	waitGroup     sync.WaitGroup
 	closeHandlers []*CloseHandler
-	isHalting     bool
+	haltingFlag   bool
+	haltingMutex  sync.RWMutex
+}
+
+func (w *Waiter) isHalting() bool {
+	w.haltingMutex.RLock()
+	defer w.haltingMutex.RUnlock()
+	return w.haltingFlag
+}
+
+func (w *Waiter) setHalting(value bool) {
+	w.haltingMutex.Lock()
+	defer w.haltingMutex.Unlock()
+	w.haltingFlag = value
 }
 
 func (w *Waiter) addHandler(f *func(), autoDone bool) *CloseHandler {
@@ -63,10 +76,10 @@ func (w *Waiter) AddCloseHandler(f func(), waitForChannel bool) *CloseHandler {
 }
 
 func (w *Waiter) Halt(err error) {
-	if w.isHalting {
+	if w.isHalting() {
 		return
 	}
-	w.isHalting = true
+	w.setHalting(true)
 
 	w.RLock()
 	for _, h := range w.closeHandlers {
@@ -87,7 +100,7 @@ func (w *Waiter) Halt(err error) {
 		}
 	}
 
-	w.isHalting = false
+	w.setHalting(false)
 }
 
 func (w *Waiter) Wait() {
@@ -109,6 +122,7 @@ func NewWaiter() *Waiter {
 		sync.WaitGroup{},
 		make([]*CloseHandler, 0),
 		false,
+		sync.RWMutex{},
 	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
